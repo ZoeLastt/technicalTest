@@ -63,8 +63,8 @@ export class Symbol extends Base {
      */
     _create(id, name) {
         this._id = id;
-        this._name = name;
-        const animations = PIXI.Assets.cache.get(this._name).data.animations;
-        this._native = PIXI.AnimatedSprite.fromFrames(animations[`${this._name}Win`]);
+        this.name = name; // to do - does this need to be private ? same as id
+        const animations = PIXI.Assets.cache.get(this.name).data.animations;
+        this._native = PIXI.AnimatedSprite.fromFrames(animations[`${this.name}Win`]);
     }
 }

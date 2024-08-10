@@ -75,6 +75,21 @@ export class Reel extends Base {
     }
 
     /**
+     * Return this reels symbol names, removing the non visible padding symbols above/below the reels.
+     * @example
+     * ['ace', 'jack', 'ace']
+     * @returns {Array}
+     */
+    getLandedSymbols() {
+        const symbols = this._symbols.slice(1, -1);
+        const names = [];
+        for ( let i =0; i < symbols.length; ++i) {
+            names.push( symbols[i].name );
+        }
+        return names;
+    }
+
+    /**
      * Create the reel using PIXI container and initial symbols
      * 
      * @private
