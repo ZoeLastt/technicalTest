@@ -5,6 +5,7 @@ import { symbolStore } from "./reels/symbolStore.js";
 import { ReelManager } from "./reels/reelsManager.js";
 import { timerManager } from "./utils/timermanager.js";
 import { Button } from "./button.js";
+import { Tween } from "./utils/tween.js";
 
 /**
  * Base entry point for the game
@@ -75,6 +76,8 @@ class Core {
         graphics.endFill();
         renderer.addChild(graphics);
 
+        this._createScrollingBackground();
+
         const background = PIXI.Sprite.from("background");
         renderer.addChild(background);
 
@@ -118,7 +121,27 @@ class Core {
         button.x = 475;
         button.y = 440;
         renderer.addChild(button.native);
+    }
 
+    /**
+     * Create the scrolling background assets and loop them moving across the top of the screen 
+     */
+    _createScrollingBackground(){
+        const bigCloud = PIXI.Sprite.from("cloud1");
+        bigCloud.x -= bigCloud.width;
+        renderer.addChild(bigCloud);
+
+        const smallCloud = PIXI.Sprite.from("cloud2");
+        smallCloud.x -= (bigCloud.width*2);
+        renderer.addChild(smallCloud);
+
+        const container = new PIXI.Container("scrollingBackgroundContainer");
+        renderer.addChild(container);
+
+        container.addChild(smallCloud);
+        container.addChild(bigCloud);
+        
+        Tween.to(container, 10000, {x:1800, ease:Linear.easeNone, repeat:-1});
     }
 }
 

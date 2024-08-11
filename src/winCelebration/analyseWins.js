@@ -1,9 +1,9 @@
 /**
- * simple timer class 
+ * Class containing functionality to analyse wins
  * 
  * @class
  */
-export class analyseWins {
+export class AnalyseWins {
     /**
      * 
      */

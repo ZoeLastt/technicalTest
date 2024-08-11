@@ -2,7 +2,8 @@ import * as PIXI from "pixi.js";
 import { Reel } from "./reel.js";
 import { Base } from "../base.js";
 import { timerManager } from "../utils/timermanager.js";
-import { analyseWins } from "./analyseWins.js";
+import { AnalyseWins } from "../winCelebration/analyseWins.js";
+import { WinVisuals } from "../winCelebration/winVisuals.js";
 
 /**
  * Reel manager controls multipler reels 
@@ -19,7 +20,7 @@ export class ReelManager extends Base {
      */
     constructor(numberOfReels, symbolsPerReel, reelWidth, symbolHeight) {
         super();
-        this._analyseWins = new analyseWins();
+        this._analyseWins = new AnalyseWins();
         this._numberOfReels = numberOfReels;
         this._symbolsPerReel = symbolsPerReel;
         this._reelWidth = reelWidth;
@@ -28,6 +29,7 @@ export class ReelManager extends Base {
         this._landedSymbols = [];
         this._symbolSprites = [];
         this._create();
+       this._winVisuals = new WinVisuals(numberOfReels, symbolsPerReel, this._native); 
     }
 
     /**
@@ -70,19 +72,6 @@ export class ReelManager extends Base {
         }
 
         const winlines = this._analyseWins.getWinlines(this._landedSymbols, this._numberOfReels, this._symbolsPerReel);
-        
-
-        // TO DO - move this to own component and make dynamic
-        // get line points 
-        // for each winline 
-        // draw pixi lines
-        // add a delay 
-        const graphics = new PIXI.Graphics();
-        graphics.moveTo(0, 0);
-        graphics.lineStyle( 10, 0xe5eb34 );
-        graphics.lineTo(205, 205);
-        graphics.lineTo(405, 205);
-        this._native.addChild(graphics);
 
         this._spinning = false;
     }
