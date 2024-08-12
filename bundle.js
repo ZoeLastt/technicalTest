@@ -29692,8 +29692,8 @@ void main(void)\r
   var SimpleTimeline = nonGlobals.core.SimpleTimeline;
   var Animation = nonGlobals.core.Animation;
   var Ease = globals.Ease;
-  var Linear = globals.Linear;
-  var Power0 = Linear;
+  var Linear$1 = globals.Linear;
+  var Power0 = Linear$1;
   var Power1 = globals.Power1;
   var Power2 = globals.Power2;
   var Power3 = globals.Power3;
@@ -36308,9 +36308,9 @@ void main(void)\r
        */
       _create(id, name) {
           this._id = id;
-          this._name = name;
-          const animations = Assets.cache.get(this._name).data.animations;
-          this._native = AnimatedSprite.fromFrames(animations[`${this._name}Win`]);
+          this.name = name; // to do - does this need to be private ? same as id
+          const animations = Assets.cache.get(this.name).data.animations;
+          this._native = AnimatedSprite.fromFrames(animations[`${this.name}Win`]);
       }
   };
 
@@ -36486,7 +36486,6 @@ void main(void)\r
           this._createNextSymbol();
           
           Tween.fromTo(this, 1000, {_spinningSpeed: 0, ease: Easings.Back.easeIn}, {_spinningSpeed: 10}).startPromise();
-
       }
 
       /**
@@ -36521,6 +36520,21 @@ void main(void)\r
       _repositionSymbols() {
           const paddingTop = this._symbols.length === this._symbolsInView + 2 ? 1 : 2;
           this._symbols.forEach((symbol, index) => symbol.y = (this._symbolHeight*index) - (this._symbolHeight*paddingTop));
+      }
+
+      /**
+       * Return this reels symbol names, removing the non visible padding symbols above/below the reels.
+       * @example
+       * ['ace', 'jack', 'ace']
+       * @returns {Array}
+       */
+      getLandedSymbols() {
+          const symbols = this._symbols.slice(1, -1);
+          const names = [];
+          for (let i = 0; i < symbols.length; ++i) {
+              names.push( symbols[i].name );
+          }
+          return names;
       }
 
       /**
@@ -36678,6 +36692,249 @@ void main(void)\r
   const timerManager = new TimerManager();
 
   /**
+   * Class containing functionality to analyse wins
+   * 
+   * @class
+   */
+  class AnalyseWins {
+      /**
+       * 
+       */
+      constructor() {
+          this._paytable = {
+              h2: 10, 
+              h3: 10, 
+              h4: 10, 
+              ace: 30, 
+              king: 30, 
+              queen: 30, 
+              jack: 30, 
+              ten: 50, 
+              nine: 50
+          };
+
+          /**
+           * Each of the first 3 symbols have the below 9 winlines 
+           * The reel being the index, the row being the value 
+           * @example
+           * [1, 0] on reel 0 would look like 
+           * [X, O, X]
+           * [O, X, O]
+           * [O, O, O]
+           */
+          this.winlines = [
+              [0,0],
+              [0,1],
+              [0,2],
+              [1,0],
+              [1,1],
+              [1,2],
+              [2,0],
+              [2,1],
+              [2,2],
+          ];
+
+          // TO DO - could parse these or get from common place ? core?
+          this._reelCount = 3;
+          this._rowCount = 3;
+      }
+
+      /**
+       * Get the winning lines for every starting symbol 
+       * @param {array} symbols - Contains the landed reel symbols 
+       * @returns {array}
+       */
+      getWinningLines(symbols) {
+          const winlines = Array(this._rowCount).fill().map(() => []);
+      
+          for (let row = 0; row < this._rowCount; ++row) {
+              const firstSymbol = symbols[0][row];
+              const reel1Matches = [];
+              const reel2Matches = [];
+      
+              // Find matching symbols in subsequent reels
+              for (let reelIndex = 1; reelIndex < symbols.length; ++reelIndex) {
+                  for (let symbolIndex = 0; symbolIndex < symbols[reelIndex].length; ++symbolIndex) {
+                      if (symbols[reelIndex][symbolIndex] === firstSymbol) {
+                          if (reelIndex === 1) {
+                              reel1Matches.push(symbolIndex);
+                          } else {
+                              reel2Matches.push(symbolIndex);
+                          }
+                      }
+                  }
+              }
+      
+              // Generate all winline combinations     
+              if (reel1Matches.length > 0 && reel2Matches.length > 0) {
+                  reel1Matches.forEach(index1 => {
+                      reel2Matches.forEach(index2 => {
+                          winlines[row].push([index1, index2]);
+                      });
+                  });
+              }
+          }
+      
+          return winlines;
+      }
+
+      /**
+       * Return the total win amount for all winlines 
+       * @param {Array} winlines - Contains winlines 
+       * @param {array} symbols - Contains all landed symbols 
+       */
+      getTotalWin(winlines, symbols) {
+          // TO DO - could refactor to store all individual wins for a different display?
+          let totalWin = 0;
+
+          for (let row = 0; row < this._rowCount; ++row) {
+              if (winlines[row].length > 0) {
+              const count = winlines[row].length;
+              const symbol = symbols[0][row];
+              totalWin += count * this._paytable[symbol];
+              }
+          }
+          return totalWin;
+      }
+  }
+
+  /**
+   * Handles win celebration visuals 
+   * 
+   * @class
+   */
+  class WinVisuals {
+      /**
+       * 
+       * @param {Number} reelCount - The number of reels 
+       * @param {Number} rowCount - The number of rows / symbols per reel
+       */
+      constructor(reelCount, rowCount, reelContainer, timerManager) {
+          this._reelCount = reelCount;
+          this._rowCount = rowCount;
+          this._reelContainer = reelContainer;
+          this._timerManager = timerManager;
+
+          this.winlines = [
+              [0,0],
+              [0,1],
+              [0,2],
+              [1,0],
+              [1,1],
+              [1,2],
+              [2,0],
+              [2,1],
+              [2,2],
+          ];
+
+          this._createAssets(); 
+      }
+
+      /**
+       * Create all of the assets that we will use 
+       */
+      _createAssets() {
+          // Create some containers to better sort all of the winline graphics to be created 
+          this._winlineContainer = new Container(`WinlineContainer`);
+          for (let reel = 0; reel < this._reelCount; ++reel) {
+              const rowContainer = new Container(`Row_${reel}`);
+              rowContainer.name = `Row_${reel}`;
+              this._winlineContainer.addChild(rowContainer);
+          }
+          this._reelContainer.addChild(this._winlineContainer);
+
+          // TO DO - better way to get these, get reel width ? etc - placeholder for now
+          const yPositions = [80, 180, 280];
+          const xPositions = [125, 187, 357];
+          
+          // Create all of the winline assets 
+          for (let reel = 0; reel < this._reelCount; ++reel) {
+              const container = this._winlineContainer.getChildByName(`Row_${reel}`);
+              for (let line = 0; line < this.winlines.length; ++line){
+                  const winlineContainer = new Container(`${this.winlines[line]}`);
+                  winlineContainer.name = `${this.winlines[line]}`;
+                  
+                  // Draw line over first symbol
+                  this._drawLine(winlineContainer, {x: 0, y: yPositions[reel]}, {x: xPositions[0], y: yPositions[reel]});
+
+                  // Draw the lines to the second and third symbols
+                  this._drawLine(winlineContainer, {x: xPositions[0], y: yPositions[reel]}, {x: xPositions[1], y: yPositions[this.winlines[line][0]]});
+                  this._drawLine(winlineContainer, {x: xPositions[1], y: yPositions[this.winlines[line][0]] }, {x: xPositions[2], y: yPositions[this.winlines[line][1]]});
+                  winlineContainer.visible = false;
+                  container.addChild(winlineContainer);
+              }
+          }
+
+          // Create the total win pop up assets 
+          this._totalWinContainer = new Container(`TotalWin`);
+          this._winText = new Text('',{fontFamily : 'Arial', fontSize: 100, fill : 0x00000, align : 'center'});
+
+          // Simple rectangle so text is more visible against reels 
+          var graphics = new Graphics();
+          graphics.beginFill(0xFFFFFF);
+          graphics.drawRect(0, 0, 400, 200);
+          this._totalWinContainer.addChild(graphics);
+          this._totalWinContainer.addChild(this._winText);
+          this._totalWinContainer.y = 75;
+          this._totalWinContainer.visible = false;
+          this._reelContainer.addChild(this._totalWinContainer);
+      }
+
+      /**
+       * Show the total win 
+       * @param {number} win - The win amount to show
+       */
+      async showTotalWin(win) {
+          this._winText.text = win;
+          // TO DO - could use a tween to fade in/out
+          this._totalWinContainer.visible = true;
+          await this._timerManager.startTimer(1000);
+          this._totalWinContainer.visible = false;
+      }
+
+      /**
+       * Set the visibilty of a winline container 
+       * @param {number} row - The reel row that the first symbol of the winline is on 
+       * @param {string} winline - The name of the win, for example 0_1
+       * @param {boolean} visible - Boolean determining the winline visibility
+       */
+      _setWinlineVisibility(row, winline, visible) {
+          const rowContainer = this._winlineContainer.getChildByName(`Row_${row}`);
+          const winlineContainer = rowContainer.getChildByName(`${winline}`);
+          winlineContainer.visible = visible;
+      }
+
+      /**
+       * Loop through each of the winlines
+       * @param {array} winlines - contains winlines for each starting symbol
+       */
+      async playWinlineLoop(winlines) {
+          for (let row = 0; row < winlines.length; ++row) {
+              for (let winline = 0; winline < winlines[row].length; ++winline) {
+                  // Show a winline - delay - then hide the winline
+                  this._setWinlineVisibility(row, winlines[row][winline], true);
+                  await this._timerManager.startTimer(1000);
+                  this._setWinlineVisibility(row, winlines[row][winline], false);     
+              }
+          }
+      }
+
+      /**
+       * Draw a line
+       * @param {PIXI.Container} container - container to add the line to 
+       * @param {Point} start - contains the starting x / y positions
+       * @param {Point} end - contains the ending x / y positions
+       */
+      _drawLine(container, start, end) {
+          const graphics = new Graphics();
+          graphics.moveTo(start.x, start.y);
+          graphics.lineStyle( 10, 0xe5eb34 ); // TO DO - could parse hex and have alternating colours
+          graphics.lineTo(end.x, end.y);
+          container.addChild(graphics);
+      }
+  }
+
+  /**
    * Reel manager controls multipler reels 
    * 
    * @class
@@ -36697,7 +36954,11 @@ void main(void)\r
           this._reelWidth = reelWidth;
           this._symbolHeight = symbolHeight;
           this._reels = [];
+          this._landedSymbols = [];
+          this._symbolSprites = [];
           this._create();
+          this._winVisuals = new WinVisuals(numberOfReels, symbolsPerReel, this._native, timerManager); 
+          this._analyseWins = new AnalyseWins();
       }
 
       /**
@@ -36707,11 +36968,13 @@ void main(void)\r
           if (this._spinning) {
               return;
           }
+
+          this._landedSymbols = [];
+          this._symbolSprites = [];
           this._spinning = true;
           this._reels.forEach(reel => {
               reel.startSpin();
           });
-         
       }
 
       /**
@@ -36731,8 +36994,22 @@ void main(void)\r
           this._promises.push(this._reels[2].stopSpin());
           
           await Promise.all(this._promises);
-          
+
+          // Store the final landed symbols 
+          for(let reel = 0; reel < this._reels.length; ++reel) {
+              this._landedSymbols.push(this._reels[reel].getLandedSymbols());
+          }
+
           this._spinning = false;
+
+          // Play the winline animations - then show the total win
+          const winlines = this._analyseWins.getWinningLines(this._landedSymbols);
+          const totalWin = this._analyseWins.getTotalWin(winlines, this._landedSymbols);
+          if (totalWin > 0) {
+              await this._winVisuals.playWinlineLoop(winlines);
+              await timerManager.startTimer(500);
+              await this._winVisuals.showTotalWin(totalWin);
+          }
       }
 
       /**
@@ -36880,6 +37157,8 @@ void main(void)\r
           graphics.endFill();
           renderer.addChild(graphics);
 
+          this._createScrollingBackground();
+
           const background = Sprite.from("background");
           renderer.addChild(background);
 
@@ -36923,7 +37202,27 @@ void main(void)\r
           button.x = 475;
           button.y = 440;
           renderer.addChild(button.native);
+      }
 
+      /**
+       * Create the scrolling background assets and loop them moving across the top of the screen 
+       */
+      _createScrollingBackground(){
+          const bigCloud = Sprite.from("cloud1");
+          bigCloud.x -= bigCloud.width;
+          renderer.addChild(bigCloud);
+
+          const smallCloud = Sprite.from("cloud2");
+          smallCloud.x -= (bigCloud.width*2);
+          renderer.addChild(smallCloud);
+
+          const container = new Container("scrollingBackgroundContainer");
+          renderer.addChild(container);
+
+          container.addChild(smallCloud);
+          container.addChild(bigCloud);
+          
+          Tween.to(container, 10000, {x:1800, ease:Linear.easeNone, repeat:-1});
       }
   }
 
