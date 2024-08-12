@@ -37,7 +37,6 @@ export class Reel extends Base {
         this._createNextSymbol();
         
         Tween.fromTo(this, 1000, {_spinningSpeed: 0, ease: Easings.Back.easeIn}, {_spinningSpeed: 10}).startPromise();
-
     }
 
     /**
@@ -83,7 +82,7 @@ export class Reel extends Base {
     getLandedSymbols() {
         const symbols = this._symbols.slice(1, -1);
         const names = [];
-        for ( let i =0; i < symbols.length; ++i) {
+        for (let i = 0; i < symbols.length; ++i) {
             names.push( symbols[i].name );
         }
         return names;

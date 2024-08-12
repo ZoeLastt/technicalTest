@@ -20,7 +20,6 @@ export class ReelManager extends Base {
      */
     constructor(numberOfReels, symbolsPerReel, reelWidth, symbolHeight) {
         super();
-        this._analyseWins = new AnalyseWins();
         this._numberOfReels = numberOfReels;
         this._symbolsPerReel = symbolsPerReel;
         this._reelWidth = reelWidth;
@@ -29,7 +28,7 @@ export class ReelManager extends Base {
         this._landedSymbols = [];
         this._symbolSprites = [];
         this._create();
-       this._winVisuals = new WinVisuals(numberOfReels, symbolsPerReel, this._native); 
+        this._winVisuals = new WinVisuals(numberOfReels, symbolsPerReel, this._native, timerManager); 
     }
 
     /**
@@ -71,9 +70,16 @@ export class ReelManager extends Base {
             this._landedSymbols.push(this._reels[reel].getLandedSymbols());
         }
 
-        const winlines = this._analyseWins.getWinlines(this._landedSymbols, this._numberOfReels, this._symbolsPerReel);
-
         this._spinning = false;
+
+        // Play the winline animations 
+        const winlines = AnalyseWins.getWinningLines(this._landedSymbols);
+        if (winlines.length > 0) {
+            this._winVisuals.playWinlineLoop(winlines);
+        }
+
+        // TO DO - show total win
+
     }
 
     /**
