@@ -29,6 +29,7 @@ export class ReelManager extends Base {
         this._symbolSprites = [];
         this._create();
         this._winVisuals = new WinVisuals(numberOfReels, symbolsPerReel, this._native, timerManager); 
+        this._analyseWins = new AnalyseWins();
     }
 
     /**
@@ -72,14 +73,14 @@ export class ReelManager extends Base {
 
         this._spinning = false;
 
-        // Play the winline animations 
-        const winlines = AnalyseWins.getWinningLines(this._landedSymbols);
-        if (winlines.length > 0) {
-            this._winVisuals.playWinlineLoop(winlines);
+        // Play the winline animations - then show the total win
+        const winlines = this._analyseWins.getWinningLines(this._landedSymbols);
+        const totalWin = this._analyseWins.getTotalWin(winlines, this._landedSymbols);
+        if (totalWin > 0) {
+            await this._winVisuals.playWinlineLoop(winlines);
+            await timerManager.startTimer(500);
+            await this._winVisuals.showTotalWin(totalWin);
         }
-
-        // TO DO - show total win
-
     }
 
     /**

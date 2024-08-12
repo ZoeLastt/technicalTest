@@ -52,56 +52,55 @@ export class AnalyseWins {
      * @returns {array}
      */
     getWinningLines(symbols) {
-        const winlines = [[], [], []];
+        const winlines = Array(this._rowCount).fill().map(() => []);
+    
         for (let row = 0; row < this._rowCount; ++row) {
             const firstSymbol = symbols[0][row];
-                const reel1 = [];
-                const reel2 = [];
-
-                // Loop through each reels symbols and store if matches winline symbol
-                for(let x = 1; x < symbols.length; ++x) {
-                    for(let y = 0; y < symbols[x].length; ++y) {
-                        if(symbols[x][y] === firstSymbol) {
-                            if(x===1){
-                                reel1.push(y);
-                            } else {
-                                reel2.push(y);
-                            }
+            const reel1Matches = [];
+            const reel2Matches = [];
+    
+            // Find matching symbols in subsequent reels
+            for (let reelIndex = 1; reelIndex < symbols.length; ++reelIndex) {
+                for (let symbolIndex = 0; symbolIndex < symbols[reelIndex].length; ++symbolIndex) {
+                    if (symbols[reelIndex][symbolIndex] === firstSymbol) {
+                        if (reelIndex === 1) {
+                            reel1Matches.push(symbolIndex);
+                        } else {
+                            reel2Matches.push(symbolIndex);
                         }
                     }
                 }
-
+            }
+    
             // Generate all winline combinations     
-            if(reel1.length > 0 && reel2.length > 0) {
-                for(let a = 0; a < reel1.length; ++a ) {
-                    for( let b = 0; b < reel2.length; ++b){
-                        winlines[row].push([reel1[a], reel2[b]]);
-                    }
-                }
+            if (reel1Matches.length > 0 && reel2Matches.length > 0) {
+                reel1Matches.forEach(index1 => {
+                    reel2Matches.forEach(index2 => {
+                        winlines[row].push([index1, index2]);
+                    });
+                });
             }
         }
-
+    
         return winlines;
     }
 
+    /**
+     * Return the total win amount for all winlines 
+     * @param {Array} winlines - Contains winlines 
+     * @param {array} symbols - Contains all landed symbols 
+     */
+    getTotalWin(winlines, symbols) {
+        // TO DO - could refactor to store all individual wins for a different display?
+        let totalWin = 0
 
-
-
-/**
- * Return the total win amount for all winlines 
- * @param {Array} winlines - Contains winlines 
- * @param {array} symbols - Contains all landed symbols 
- */
-getTotalWin(winlines, symbols) {
-    // TO DO - could refactor to store all individual wins for a different display?
-    let totalWin = 0
-
-    /*
-    for (let wins = 0; wins < winningLines.length; ++wins) {
-        let number = this._paytable[winningLines[wins].symbol];
-        totalWin += number * winningLines[wins].count;
+        for (let row = 0; row < this._rowCount; ++row) {
+            if (winlines[row].length > 0) {
+            const count = winlines[row].length;
+            const symbol = symbols[0][row];
+            totalWin += count * this._paytable[symbol];
+            }
+        }
+        return totalWin;
     }
-    */
-    return totalWin;
-}
 }
