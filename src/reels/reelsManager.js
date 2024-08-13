@@ -73,6 +73,8 @@ export class ReelManager extends Base {
 
         this._spinning = false;
 
+        // TO DO - could add a total win meter to show every spins win 
+
         // Play the winline animations - then show the total win
         const winlines = this._analyseWins.getWinningLines(this._landedSymbols);
         const totalWin = this._analyseWins.getTotalWin(winlines, this._landedSymbols);
@@ -81,6 +83,8 @@ export class ReelManager extends Base {
             await timerManager.startTimer(500);
             await this._winVisuals.showTotalWin(totalWin);
         }
+
+        // TO DO - the above flow could cancel when a new spin is started 
     }
 
     /**

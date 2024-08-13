@@ -36749,26 +36749,21 @@ void main(void)\r
       
           for (let row = 0; row < this._rowCount; ++row) {
               const firstSymbol = symbols[0][row];
-              const reel1Matches = [];
-              const reel2Matches = [];
+              const matchingIndices = [[], []];  // Stores matching indices for reel 1 and reel 2
       
-              // Find matching symbols in subsequent reels
-              for (let reelIndex = 1; reelIndex < symbols.length; ++reelIndex) {
-                  for (let symbolIndex = 0; symbolIndex < symbols[reelIndex].length; ++symbolIndex) {
-                      if (symbols[reelIndex][symbolIndex] === firstSymbol) {
-                          if (reelIndex === 1) {
-                              reel1Matches.push(symbolIndex);
-                          } else {
-                              reel2Matches.push(symbolIndex);
-                          }
+              // Collect matching indices for reel 1 and reel 2
+              symbols.slice(1).forEach((reel, reelIndex) => {
+                  reel.forEach((symbol, symbolIndex) => {
+                      if (symbol === firstSymbol) {
+                          matchingIndices[reelIndex].push(symbolIndex);
                       }
-                  }
-              }
+                  });
+              });
       
               // Generate all winline combinations     
-              if (reel1Matches.length > 0 && reel2Matches.length > 0) {
-                  reel1Matches.forEach(index1 => {
-                      reel2Matches.forEach(index2 => {
+              if (matchingIndices[0].length > 0 && matchingIndices[1].length > 0) {
+                  matchingIndices[0].forEach(index1 => {
+                      matchingIndices[1].forEach(index2 => {
                           winlines[row].push([index1, index2]);
                       });
                   });
@@ -36784,7 +36779,7 @@ void main(void)\r
        * @param {array} symbols - Contains all landed symbols 
        */
       getTotalWin(winlines, symbols) {
-          // TO DO - could refactor to store all individual wins for a different display?
+          // TO DO - could add to a variable storing every spins win and display 
           let totalWin = 0;
 
           for (let row = 0; row < this._rowCount; ++row) {
@@ -37002,6 +36997,8 @@ void main(void)\r
 
           this._spinning = false;
 
+          // TO DO - could add a total win meter to show every spins win 
+
           // Play the winline animations - then show the total win
           const winlines = this._analyseWins.getWinningLines(this._landedSymbols);
           const totalWin = this._analyseWins.getTotalWin(winlines, this._landedSymbols);
@@ -37010,6 +37007,8 @@ void main(void)\r
               await timerManager.startTimer(500);
               await this._winVisuals.showTotalWin(totalWin);
           }
+
+          // TO DO - the above flow could cancel when a new spin is started 
       }
 
       /**
